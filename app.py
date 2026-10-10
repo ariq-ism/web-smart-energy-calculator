@@ -14,10 +14,10 @@ import os
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  # batasi ukuran request (64 KB)
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  
 app.config["JSON_AS_ASCII"] = False
 
-# Tarif listrik rumah tangga PLN (Rp/kWh). Nilai bisa berubah, selalu cek info resmi PLN.
+
 TARIFFS = [
     {"id": "r1_900", "label": "R-1 900 VA (non-subsidi)", "rate": 1352.00},
     {"id": "r1_1300", "label": "R-1/TR 1.300 VA", "rate": 1444.70},
@@ -27,10 +27,10 @@ TARIFFS = [
 ]
 
 DEFAULTS = {
-    "rate": 1444.70,      # Rp per kWh
-    "days": 30,           # hari pemakaian per bulan
-    "limit_kwh": 150.0,   # batas konsumsi per bulan
-    "ppj": 0.0,           # Pajak Penerangan Jalan (%), berbeda tiap daerah
+    "rate": 1444.70,      
+    "days": 30,           
+    "limit_kwh": 150.0,   
+    "ppj": 0.0,           
 }
 
 MAX_APPLIANCES = 50
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         app.run(host=host, port=port, debug=True)
     else:
         try:
-            from waitress import serve  # server produksi, tersedia di requirements.txt
+            from waitress import serve  
         except ImportError:
             app.run(host=host, port=port)
         else:
