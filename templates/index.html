@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Hitung perkiraan konsumsi listrik (kWh) dan biaya perangkat elektronik di rumah atau kos.">
+  <title>Smart Energy Calculator</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-default-rate="{{ defaults.rate }}">
+  <header>
+    <h1>⚡ Smart Energy Calculator</h1>
+    <p>Hitung perkiraan konsumsi listrik dan biaya perangkat di rumah atau kos</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="basic" role="tab" aria-selected="true">Kalkulator Dasar</button>
+        <button class="tab" data-tab="list" role="tab" aria-selected="false">Per Perangkat</button>
+        <button class="tab" data-tab="adv" role="tab" aria-selected="false">Lanjutan</button>
+      </div>
+
+      <div id="error" class="error" role="alert"></div>
+
+      <!-- TAB 1: satu perangkat -->
+      <section id="tab-basic" class="panel active">
+        <div class="field">
+          <label for="b-name">Nama Alat</label>
+          <input id="b-name" placeholder="mis. Kipas angin" maxlength="50" value="Kipas angin">
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="b-watts">Daya (Watt)</label>
+            <input id="b-watts" type="number" min="0" step="any" placeholder="mis. 45" value="45">
+          </div>
+          <div class="field">
+            <label for="b-hours">Lama Pakai (jam/hari)</label>
+            <input id="b-hours" type="number" min="0" max="24" step="any" placeholder="mis. 10" value="10">
+          </div>
+        </div>
+        <div class="field">
+          <label for="rate-basic">Tarif Listrik (per kWh)</label>
+          <div class="prefix"><span>Rp</span><input class="rate-input" id="rate-basic" type="number" min="0" step="any"></div>
+        </div>
+        <button class="btn block" id="calc-basic">Hitung</button>
+      </section>
+
+      <!-- TAB 2: banyak perangkat -->
+      <section id="tab-list" class="panel">
+        <ul class="list" id="appliance-list"></ul>
+        <div class="row">
+          <div class="name-f"><label for="a-name">Nama Alat</label><input id="a-name" placeholder="mis. Kulkas" maxlength="50"></div>
+          <div><label for="a-watts">Watt</label><input id="a-watts" type="number" min="0" step="any" placeholder="mis. 150"></div>
+          <div><label for="a-hours">Jam/Hari</label><input id="a-hours" type="number" min="0" max="24" step="any" placeholder="mis. 24"></div>
+          <button class="btn" id="add-btn">+ Tambah</button>
+        </div>
+        <div class="field">
+          <label for="rate-list">Tarif Listrik (per kWh)</label>
+          <div class="prefix"><span>Rp</span><input class="rate-input" id="rate-list" type="number" min="0" step="any"></div>
+        </div>
+        <button class="btn block" id="calc-list">Hitung Total</button>
+        <div class="linkrow"><button class="link" id="clear-list">Kosongkan daftar</button><button class="link" id="reset-list">Kembalikan contoh</button></div>
+      </section>
+
+      <!-- TAB 3: pengaturan lanjutan -->
+      <section id="tab-adv" class="panel">
+        <div class="field">
+          <label for="tariff">Golongan Tarif PLN</label>
+          <select id="tariff">
+            {% for t in tariffs %}
+            <option value="{{ t.id }}" data-rate="{{ t.rate if t.rate is not none else '' }}">{{ t.label }}{% if t.rate is not none %} - Rp {{ t.rate_text }}/kWh{% endif %}</option>
+            {% endfor %}
+          </select>
+          <div class="hint">Tarif dapat berubah. Cek tagihan atau situs PLN untuk angka terbaru.</div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="days">Hari Pemakaian / Bulan</label>
+            <input id="days" type="number" min="1" max="31" value="{{ defaults.days }}">
+          </div>
+          <div class="field">
+            <label for="limit">Batas Konsumsi (kWh/bulan)</label>
+            <input id="limit" type="number" min="1" step="any" value="{{ defaults.limit_kwh|int }}">
+          </div>
+        </div>
+        <div class="field">
+          <label for="ppj">Pajak Penerangan Jalan / PPJ (%)</label>
+          <input id="ppj" type="number" min="0" max="100" step="any" value="{{ defaults.ppj|int }}">
+          <div class="hint">Besarnya berbeda tiap daerah (biasanya tertera di tagihan). Isi 0 jika tidak ingin dihitung.</div>
+        </div>
+        <p class="hint">Pengaturan ini dipakai oleh tab Kalkulator Dasar dan Per Perangkat, dan tersimpan di browser kamu.</p>
+      </section>
+
+      <!-- HASIL -->
+      <div id="result">
+        <div id="alert" class="alert"></div>
+        <div class="stats">
+          <div class="stat"><div class="k">Konsumsi per hari</div><div class="v" id="r-daily">-</div></div>
+          <div class="stat"><div class="k">Konsumsi per bulan</div><div class="v" id="r-monthly">-</div></div>
+          <div class="stat"><div class="k">Biaya per hari</div><div class="v" id="r-dcost">-</div></div>
+          <div class="stat"><div class="k">Biaya per bulan (sebelum PPJ)</div><div class="v" id="r-sub">-</div></div>
+          <div class="stat big"><div class="k" id="r-total-label">Estimasi biaya per bulan</div><div class="v" id="r-total">-</div></div>
+        </div>
+        <div class="hint" id="r-usage-label"></div>
+        <div class="bar" id="r-bar"><div></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Perangkat</th><th>kWh/hari</th><th>kWh/bulan</th><th>Biaya/bulan</th><th>Porsi</th></tr></thead>
+            <tbody id="r-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>Smart Energy Calculator | Hasil berupa perkiraan, bukan tagihan resmi PLN.</footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
